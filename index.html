@@ -126,6 +126,20 @@ h1{font-family:var(--cond);font-weight:800;font-size:clamp(52px,17vw,96px);line-
 .tier{font-family:var(--cond);font-weight:700;font-size:clamp(22px,7vw,34px);color:var(--oak);margin:0 0 28px}
 .go.again{background:var(--ink);color:var(--bg);box-shadow:none;font-size:18px;padding:16px 44px}
 
+.code{font:inherit;font-size:24px;font-weight:600;text-align:center;letter-spacing:.2em;text-transform:uppercase;
+  width:min(260px,80vw);padding:14px 16px;border-radius:14px;border:2px solid var(--muted);background:var(--panel);color:var(--ink);margin:0 0 16px;
+  -webkit-user-select:text;user-select:text}
+.code:focus{outline:none;border-color:var(--bordeaux)}
+.msg{min-height:22px;font-size:15px;font-weight:600;color:var(--bordeaux);margin-top:14px}
+.status{margin-top:18px;font-size:14px;color:var(--muted);line-height:1.6}
+#endScreen{transition:background .3s}
+#endScreen .tag{font-family:var(--cond);font-weight:800;letter-spacing:.2em;font-size:20px;padding:6px 16px;border-radius:999px;border:2px solid currentColor;margin-bottom:6px}
+#endScreen .band{font-family:var(--cond);font-weight:800;font-size:clamp(64px,24vw,140px);line-height:.85;letter-spacing:.02em;text-transform:uppercase;margin:6px 0 4px}
+#endScreen.final{color:var(--fg,#fff)}
+#endScreen.final .big{font-size:min(28vw,24vh)}
+#endScreen.final .mark,#endScreen.final .sub{color:inherit;opacity:.85}
+#endScreen.practice{background:#8a8a8a;color:#fff}
+#endScreen.practice .mark,#endScreen.practice .sub,#endScreen.practice .tier{color:#fff}
 @media (prefers-reduced-motion:reduce){
   .slot.pop{animation:none}.door.armed span{animation:none}
   .door{transition:opacity .2s}
@@ -163,18 +177,20 @@ h1{font-family:var(--cond);font-weight:800;font-size:clamp(52px,17vw,96px);line-
 <section class="overlay" id="startScreen">
   <div class="mark">VINTEC</div>
   <h1>Fill the Vintec</h1>
-  <p class="lede">120 bottles against the clock. Open the door, then tap red on the left and white on the right as fast as you can. Red fills the top, white fills the bottom.</p>
-  <button class="go" id="startBtn">Start</button>
-  <div class="best" id="bestStart"></div>
+  <p class="lede">120 bottles against the clock. Tap the door, then red on the left and white on the right, as fast as you can. Enter the code on the screen to start.</p>
+  <input class="code" id="codeIn" placeholder="CODE" autocomplete="off" autocapitalize="characters" spellcheck="false" maxlength="12" aria-label="Unlock code">
+  <button class="go" id="startBtn">Unlock</button>
+  <div class="msg" id="msg"></div>
+  <div class="status" id="status"></div>
 </section>
 
 <section class="overlay hide" id="endScreen">
-  <div class="mark">VINTEC</div>
+  <div class="tag" id="tag">PRACTICE</div>
+  <div class="band" id="band"></div>
   <div class="big" id="final">0.00<small>s</small></div>
-  <p class="sub">to fill a Vintec with 120 bottles</p>
+  <p class="sub" id="endSub">to fill a Vintec with 120 bottles</p>
   <p class="tier" id="tier"></p>
-  <button class="go again" id="againBtn">Play again</button>
-  <div class="best" id="bestEnd"></div>
+  <button class="go again" id="againBtn">Done</button>
 </section>
 
 <script>
@@ -229,11 +245,31 @@ h1{font-family:var(--cond);font-weight:800;font-size:clamp(52px,17vw,96px);line-
     } catch (e) {}
   }
 
-  // Best time
-  const getBest = () => { try { const v = parseFloat(localStorage.getItem('vintecBest')); return isNaN(v) ? null : v; } catch (e) { return null; } };
-  const setBest = v => { try { localStorage.setItem('vintecBest', String(v)); } catch (e) {} };
-  const showBest = () => { const b = getBest(); $('bestStart').textContent = b ? `Best on this phone: ${b.toFixed(2)}s` : ''; };
-  showBest();
+  // ---- Event setup: unlock codes and colour bands (slowest first) ----
+  const CODES = { PRACTICE: 'CORK', FINAL: 'POUR' };
+  const BANDS = [
+    { name: 'Red',    min: 30, bg: '#C8102E', fg: '#fff' },
+    { name: 'Orange', min: 25, bg: '#E8730C', fg: '#fff' },
+    { name: 'Yellow', min: 21, bg: '#F2C230', fg: '#1d1c1b' },
+    { name: 'Green',  min: 18, bg: '#2E8B3E', fg: '#fff' },
+    { name: 'Blue',   min: 15, bg: '#1F5FBF', fg: '#fff' },
+    { name: 'Purple', min: 0,  bg: '#6A2C91', fg: '#fff' },
+  ];
+  const bandFor = s => BANDS.find(b => s >= b.min);
+  const store = {
+    get: k => { try { return localStorage.getItem('ftv_' + k); } catch (e) { return null; } },
+    set: (k, v) => { try { localStorage.setItem('ftv_' + k, v); } catch (e) {} },
+  };
+  let mode = null; // 'practice' | 'final'
+
+  function showStatus() {
+    const p = store.get('practice'), f = store.get('final');
+    const lines = [];
+    lines.push(p ? 'Practice: used' : 'Practice: available');
+    lines.push(f ? 'Final: used' : 'Final: available');
+    $('status').innerHTML = lines.join('<br>');
+  }
+  showStatus();
 
   let state = 'idle', t0 = 0, raf = 0, red = 0, white = 0;
   const fmt = ms => (ms / 1000).toFixed(2);
@@ -250,6 +286,22 @@ h1{font-family:var(--cond);font-weight:800;font-size:clamp(52px,17vw,96px);line-
     timeEl.innerHTML = '0.00<small>s</small>';
     redBtn.classList.remove('ready', 'full'); whiteBtn.classList.remove('ready', 'full');
     door.classList.remove('open', 'armed'); hint.textContent = '';
+  }
+
+  function tryUnlock() {
+    const code = $('codeIn').value.trim().toUpperCase();
+    const msg = $('msg');
+    if (!code) { msg.textContent = 'Enter the code on the screen'; return; }
+    let m = null;
+    if (code === CODES.PRACTICE) m = 'practice';
+    else if (code === CODES.FINAL) m = 'final';
+    if (!m) { msg.textContent = 'That code is not right'; return; }
+    if (store.get(m)) { msg.textContent = m === 'final' ? 'You have already played the final' : 'You have already had your practice'; return; }
+    msg.textContent = '';
+    $('codeIn').value = '';
+    $('codeIn').blur();
+    mode = m;
+    start();
   }
 
   function start() {
@@ -305,23 +357,47 @@ h1{font-family:var(--cond);font-weight:800;font-size:clamp(52px,17vw,96px);line-
     cancelAnimationFrame(raf);
     timeEl.innerHTML = fmt(ms) + '<small>s</small>';
     hint.textContent = 'Full';
-    const secs = ms / 1000, prev = getBest();
-    const isBest = prev === null || secs < prev;
-    if (isBest) setBest(secs);
-    setTimeout(() => {
-      $('final').innerHTML = fmt(ms) + '<small>s</small>';
-      $('tier').textContent = tierFor(secs);
-      $('bestEnd').textContent = isBest ? 'New best on this phone' : `Best on this phone: ${prev.toFixed(2)}s`;
-      $('endScreen').classList.remove('hide');
-      if (navigator.vibrate) navigator.vibrate([30, 40, 30]);
-    }, 550);
+    const secs = ms / 1000;
+    store.set(mode, secs.toFixed(2));
+    setTimeout(() => { showResult(mode, secs); if (navigator.vibrate) navigator.vibrate([30, 40, 30]); }, 550);
   }
 
-  $('startBtn').addEventListener('click', start);
+  function showResult(m, secs) {
+    const end = $('endScreen');
+    end.classList.remove('practice', 'final');
+    end.style.background = ''; end.style.removeProperty('--fg');
+    $('final').innerHTML = secs.toFixed(2) + '<small>s</small>';
+    if (m === 'final') {
+      const b = bandFor(secs);
+      end.classList.add('final');
+      end.style.background = b.bg; end.style.setProperty('--fg', b.fg);
+      $('tag').textContent = 'FINAL RESULT';
+      $('band').textContent = b.name;
+      $('band').style.display = '';
+      $('endSub').textContent = 'Hold your phone up';
+      $('tier').textContent = '';
+      $('againBtn').style.display = 'none';
+    } else {
+      end.classList.add('practice');
+      $('tag').textContent = 'PRACTICE';
+      $('band').style.display = 'none';
+      $('endSub').textContent = 'This one does not count';
+      $('tier').textContent = 'Wait for the final code';
+      $('againBtn').style.display = '';
+    }
+    end.classList.remove('hide');
+  }
+
+  $('startBtn').addEventListener('click', tryUnlock);
+  $('codeIn').addEventListener('keydown', e => { if (e.key === 'Enter') tryUnlock(); });
   $('againBtn').addEventListener('click', () => {
-    $('endScreen').classList.add('hide'); state = 'idle'; reset(); showBest();
+    $('endScreen').classList.add('hide'); state = 'idle'; reset(); showStatus();
     $('startScreen').classList.remove('hide');
   });
+
+  // If the final has been played, always show that result (survives a refresh)
+  const savedFinal = parseFloat(store.get('final'));
+  if (!isNaN(savedFinal)) { $('startScreen').classList.add('hide'); mode = 'final'; showResult('final', savedFinal); }
   door.addEventListener('pointerdown', openDoor);
   redBtn.addEventListener('pointerdown', e => add(false, redBtn, e));
   whiteBtn.addEventListener('pointerdown', e => add(true, whiteBtn, e));
