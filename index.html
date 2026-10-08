@@ -247,15 +247,23 @@ h1{font-family:var(--cond);font-weight:800;font-size:clamp(52px,17vw,96px);line-
 
   // ---- Event setup: unlock codes and colour bands (slowest first) ----
   const CODES = { PRACTICE: 'CORK', FINAL: 'POUR' };
+  // Slowest first. Each colour splits into A (slowest), B, C (fastest). max is exclusive.
   const BANDS = [
-    { name: 'Red',    min: 30, bg: '#C8102E', fg: '#fff' },
-    { name: 'Orange', min: 25, bg: '#E8730C', fg: '#fff' },
-    { name: 'Yellow', min: 21, bg: '#F2C230', fg: '#1d1c1b' },
-    { name: 'Green',  min: 18, bg: '#2E8B3E', fg: '#fff' },
-    { name: 'Blue',   min: 15, bg: '#1F5FBF', fg: '#fff' },
-    { name: 'Purple', min: 0,  bg: '#6A2C91', fg: '#fff' },
+    { name: 'Red',    bg: '#C8102E', fg: '#fff',    cuts: [40, 32, 27] },
+    { name: 'Yellow', bg: '#F2C230', fg: '#1d1c1b', cuts: [25, 23, 21] },
+    { name: 'Green',  bg: '#2E8B3E', fg: '#fff',    cuts: [20, 19, 18] },
+    { name: 'Blue',   bg: '#1F5FBF', fg: '#fff',    cuts: [17, 16, 15] },
+    { name: 'Purple', bg: '#6A2C91', fg: '#fff',    cuts: [14, 13, 0] },
   ];
-  const bandFor = s => BANDS.find(b => s >= b.min);
+  // cuts = lower bounds for A, B, C within each colour
+  const bandFor = s => {
+    for (const b of BANDS) {
+      if (s >= b.cuts[0]) return { ...b, letter: 'A' };
+      if (s >= b.cuts[1]) return { ...b, letter: 'B' };
+      if (s >= b.cuts[2]) return { ...b, letter: 'C' };
+    }
+    const last = BANDS[BANDS.length - 1]; return { ...last, letter: 'C' };
+  };
   const store = {
     get: k => { try { return localStorage.getItem('ftv_' + k); } catch (e) { return null; } },
     set: (k, v) => { try { localStorage.setItem('ftv_' + k, v); } catch (e) {} },
@@ -372,7 +380,7 @@ h1{font-family:var(--cond);font-weight:800;font-size:clamp(52px,17vw,96px);line-
       end.classList.add('final');
       end.style.background = b.bg; end.style.setProperty('--fg', b.fg);
       $('tag').textContent = 'FINAL RESULT';
-      $('band').textContent = b.name;
+      $('band').textContent = b.name + ' ' + b.letter;
       $('band').style.display = '';
       $('endSub').textContent = 'Hold your phone up';
       $('tier').textContent = '';
