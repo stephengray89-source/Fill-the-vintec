@@ -1,0 +1,339 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<title>Fill the Vintec</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;700;800&family=Barlow:wght@400;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#e3dfd9; --ink:#1d1c1b; --muted:#6b6560; --panel:#f4f1ec;
+  --oak:#a8703f; --bordeaux:#7a1f2b; --chardonnay:#d6b45a;
+  --cond:"Barlow Condensed","Arial Narrow",Arial,sans-serif;
+  --body:"Barlow",system-ui,-apple-system,"Segoe UI",sans-serif;
+  box-sizing:border-box;
+  padding-top:env(safe-area-inset-top,0px);
+  padding-bottom:env(safe-area-inset-bottom,0px);
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){--bg:#25272b;--ink:#f1ede7;--muted:#9c968f;--panel:#2f3237;}
+}
+:root[data-theme="dark"]{--bg:#25272b;--ink:#f1ede7;--muted:#9c968f;--panel:#2f3237;}
+*,*::before,*::after{box-sizing:inherit}
+html{height:100%;scroll-padding-top:env(safe-area-inset-top,0px)}
+body{
+  margin:0;height:100%;overflow:hidden;background:var(--bg);color:var(--ink);
+  font-family:var(--body);touch-action:manipulation;
+  -webkit-user-select:none;user-select:none;-webkit-tap-highlight-color:transparent;
+  overscroll-behavior:none;
+}
+button{font:inherit;color:inherit;touch-action:manipulation}
+
+#app{height:100%;display:flex;flex-direction:column;padding:10px 10px 12px}
+
+/* HUD */
+.hud{display:flex;align-items:flex-end;justify-content:space-between;padding:4px 6px 8px}
+.time{font-family:var(--cond);font-weight:800;font-size:46px;line-height:.9;font-variant-numeric:tabular-nums;letter-spacing:-.01em}
+.time small{font-size:.45em;font-weight:500;margin-left:2px;color:var(--muted)}
+.count{font-family:var(--cond);font-weight:700;font-size:26px;line-height:1;font-variant-numeric:tabular-nums;text-align:right}
+.count span{color:var(--muted);font-weight:500}
+
+/* Stage */
+#stage{flex:1;min-height:0;display:flex;align-items:center;justify-content:center;gap:8px}
+.side{
+  flex:1;max-width:104px;height:var(--cabH,400px);border:0;border-radius:22px;
+  background:var(--panel);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;
+  cursor:pointer;opacity:0;pointer-events:none;transition:opacity .3s ease, transform .3s ease;
+}
+.side.left{transform:translateX(-24px)}
+.side.right{transform:translateX(24px)}
+.side.ready{opacity:1;transform:none;pointer-events:auto}
+.side.full{opacity:.3;pointer-events:none}
+.side svg{width:44%;max-width:44px;height:auto}
+.side .lbl{font-weight:600;font-size:15px}
+.side .n{font-family:var(--cond);font-weight:700;font-size:20px;font-variant-numeric:tabular-nums;color:var(--muted)}
+.side:focus-visible{outline:3px solid var(--oak);outline-offset:2px}
+
+/* Cabinet */
+.cab{
+  position:relative;flex:0 0 auto;width:var(--cabW,140px);height:var(--cabH,400px);
+  background:#000;border-radius:5px;perspective:1400px;
+  padding:calc(var(--cabW)*.055) calc(var(--cabW)*.05) calc(var(--cabW)*.05);
+  display:flex;flex-direction:column;
+  box-shadow:0 18px 36px rgba(0,0,0,.35), inset 0 0 0 1px rgba(255,255,255,.06);
+}
+.brand{height:calc(var(--cabW)*.09);display:flex;align-items:center;justify-content:center;
+  color:#d4d4d4;font-size:calc(var(--cabW)*.05);letter-spacing:.32em;font-weight:600;padding-left:.32em}
+.glass{position:relative;flex:1;min-height:0;background:radial-gradient(120% 60% at 50% 40%,#161412,#050505);
+  display:flex;flex-direction:column;padding:2px 3px 0}
+.shelf{flex:1;min-height:0;display:flex;align-items:flex-end;justify-content:space-between;
+  border-bottom:2px solid var(--oak);padding:0 1px 1px}
+.half{display:flex;gap:1px}
+.slot{width:var(--d,14px);height:var(--d,14px);border-radius:50%}
+.slot.r{background:radial-gradient(circle,#a3232f 0 26%,#1e0f11 29% 68%,#3a2a2c 100%)}
+.slot.w{background:radial-gradient(circle,#e3c56b 0 26%,#26311b 29% 68%,#4d5c36 100%)}
+.slot.pop{animation:pop .2s ease-out}
+.slot.pop.r{--from:-30px}.slot.pop.w{--from:30px}
+@keyframes pop{from{transform:translateX(var(--from)) scale(.3);opacity:0}to{transform:none;opacity:1}}
+.panel{height:calc(var(--d,14px)*.9);display:flex;align-items:center;justify-content:center}
+.panel i{display:block;width:46%;height:55%;border-radius:2px;background:#1b2a33;
+  box-shadow:0 0 6px rgba(120,190,230,.45);font-style:normal;color:#9fd3f0;
+  font-family:var(--cond);font-size:calc(var(--d,14px)*.5);line-height:1;display:flex;align-items:center;justify-content:center}
+
+/* Door */
+.door{
+  position:absolute;border:0;padding:0;cursor:pointer;
+  top:calc(var(--cabW)*.055 + var(--cabW)*.09);left:calc(var(--cabW)*.05);
+  right:calc(var(--cabW)*.05);bottom:calc(var(--cabW)*.05);
+  background:
+    linear-gradient(112deg,rgba(255,255,255,.14) 0 18%,rgba(255,255,255,0) 38%),
+    rgba(12,12,12,.72);
+  box-shadow:0 0 0 calc(var(--cabW)*.05) #000;
+  transform-origin:left center;transition:transform .55s cubic-bezier(.3,.7,.2,1), opacity .55s;
+  display:flex;align-items:center;justify-content:center;
+}
+.door span{color:#fff;font-weight:600;font-size:clamp(12px,calc(var(--cabW)*.085),18px);
+  background:rgba(0,0,0,.55);padding:.5em .8em;border-radius:999px;border:1px solid rgba(255,255,255,.35);
+  opacity:0;transition:opacity .2s}
+.door.armed span{opacity:1;animation:nudge 1.1s ease-in-out infinite}
+@keyframes nudge{50%{transform:scale(1.07)}}
+.door.open{transform:rotateY(-104deg);opacity:0;pointer-events:none}
+.door:focus-visible{outline:3px solid var(--oak)}
+
+.hint{text-align:center;color:var(--muted);font-size:15px;min-height:22px;padding-top:10px}
+
+/* Overlays */
+.overlay{position:fixed;inset:0;background:var(--bg);display:flex;flex-direction:column;
+  align-items:center;justify-content:center;text-align:center;
+  padding:calc(env(safe-area-inset-top,0px) + 24px) 24px calc(env(safe-area-inset-bottom,0px) + 24px);
+  z-index:5;transition:opacity .25s}
+.overlay.hide{opacity:0;pointer-events:none}
+.mark{letter-spacing:.32em;font-weight:600;font-size:13px;color:var(--muted);padding-left:.32em}
+h1{font-family:var(--cond);font-weight:800;font-size:clamp(52px,17vw,96px);line-height:.88;margin:14px 0 14px;letter-spacing:-.01em}
+.lede{max-width:22em;font-size:17px;line-height:1.45;color:var(--muted);margin:0 0 30px}
+.go{border:0;border-radius:999px;background:var(--bordeaux);color:#fff;font-weight:600;font-size:22px;
+  padding:20px 64px;cursor:pointer;box-shadow:0 10px 24px rgba(122,31,43,.35)}
+.go:active{transform:scale(.97)}
+.go:focus-visible{outline:3px solid var(--oak);outline-offset:3px}
+.best{margin-top:22px;font-size:15px;color:var(--muted);min-height:20px}
+
+.big{font-family:var(--cond);font-weight:800;line-height:.82;font-variant-numeric:tabular-nums;
+  font-size:min(38vw,34vh);letter-spacing:-.02em;margin:10px 0 6px}
+.big small{font-size:.32em;font-weight:700;margin-left:.06em}
+.sub{font-size:clamp(18px,5vw,26px);font-weight:600;line-height:1.3;max-width:15em;margin:0 0 10px}
+.tier{font-family:var(--cond);font-weight:700;font-size:clamp(22px,7vw,34px);color:var(--oak);margin:0 0 28px}
+.go.again{background:var(--ink);color:var(--bg);box-shadow:none;font-size:18px;padding:16px 44px}
+
+@media (prefers-reduced-motion:reduce){
+  .slot.pop{animation:none}.door.armed span{animation:none}
+  .door{transition:opacity .2s}
+}
+</style>
+</head>
+<body>
+<div id="app">
+  <div class="hud">
+    <div class="time" id="time">0.00<small>s</small></div>
+    <div class="count"><b id="count">0</b><span> / 120</span></div>
+  </div>
+
+  <div id="stage">
+    <button class="side left" id="redBtn" aria-label="Add red wine">
+      <svg viewBox="0 0 40 124" aria-hidden="true"><path d="M15 4h10v26c0 6 11 13 11 25v61a4 4 0 0 1-4 4H8a4 4 0 0 1-4-4V55c0-12 11-19 11-25z" fill="#2c1417"/><rect x="14" y="2" width="12" height="24" rx="2" fill="#8e1b24"/><rect x="7" y="66" width="26" height="30" rx="2" fill="#efe6d6"/></svg>
+      <div class="lbl">Red</div><div class="n" id="redN">0/60</div>
+    </button>
+
+    <div class="cab" id="cab">
+      <div class="brand">VINTEC</div>
+      <div class="glass" id="glass"></div>
+      <button class="door" id="door" aria-label="Open the door"><span>Tap to open</span></button>
+    </div>
+
+    <button class="side right" id="whiteBtn" aria-label="Add white wine">
+      <svg viewBox="0 0 40 124" aria-hidden="true"><path d="M15 4h10v26c0 6 11 13 11 25v61a4 4 0 0 1-4 4H8a4 4 0 0 1-4-4V55c0-12 11-19 11-25z" fill="#3c4a25"/><rect x="14" y="2" width="12" height="24" rx="2" fill="#d6b45a"/><rect x="7" y="66" width="26" height="30" rx="2" fill="#f4efe2"/></svg>
+      <div class="lbl">White</div><div class="n" id="whiteN">0/60</div>
+    </button>
+  </div>
+
+  <div class="hint" id="hint"></div>
+</div>
+
+<section class="overlay" id="startScreen">
+  <div class="mark">VINTEC</div>
+  <h1>Fill the Vintec</h1>
+  <p class="lede">120 bottles against the clock. Open the door, then tap red on the left and white on the right as fast as you can. Red fills the top, white fills the bottom.</p>
+  <button class="go" id="startBtn">Start</button>
+  <div class="best" id="bestStart"></div>
+</section>
+
+<section class="overlay hide" id="endScreen">
+  <div class="mark">VINTEC</div>
+  <div class="big" id="final">0.00<small>s</small></div>
+  <p class="sub">to fill a Vintec with 120 bottles</p>
+  <p class="tier" id="tier"></p>
+  <button class="go again" id="againBtn">Play again</button>
+  <div class="best" id="bestEnd"></div>
+</section>
+
+<script>
+(() => {
+  const SHELVES = 20, PER_SHELF = 6, ZONE = SHELVES / 2, PER_SIDE = ZONE * PER_SHELF; // 60 each, 120 total
+  const $ = id => document.getElementById(id);
+  const glass = $('glass'), cab = $('cab'), door = $('door');
+  const redBtn = $('redBtn'), whiteBtn = $('whiteBtn');
+  const timeEl = $('time'), countEl = $('count'), hint = $('hint');
+
+  // Build shelves: red zone on top, temperature panel in the middle, white zone below
+  const rows = [], shelves = [];
+  for (let s = 0; s < SHELVES; s++) {
+    if (s === ZONE) { const p = document.createElement('div'); p.className = 'panel'; p.innerHTML = '<i>16° | 10°</i>'; glass.appendChild(p); }
+    const shelf = document.createElement('div'); shelf.className = 'shelf';
+    const row = [];
+    for (let i = 0; i < PER_SHELF; i++) {
+      const a = document.createElement('div'); a.className = 'slot'; shelf.appendChild(a); row.push(a);
+    }
+    glass.appendChild(shelf); shelves.push(shelf); rows.push(row);
+  }
+  // Each zone fills from its bottom shelf up. leftOrder = red (top zone), rightOrder = white (bottom zone)
+  const leftOrder = [], rightOrder = [];
+  for (let s = ZONE - 1; s >= 0; s--) rows[s].forEach(x => leftOrder.push(x));
+  for (let s = SHELVES - 1; s >= ZONE; s--) rows[s].forEach(x => rightOrder.push(x));
+
+  function layout() {
+    const st = $('stage');
+    const h = st.clientHeight, w = st.clientWidth;
+    let cabW = Math.min(w * 0.52, h / 2.85, 260);
+    const cabH = Math.min(h, cabW * 2.85);
+    document.documentElement.style.setProperty('--cabW', cabW + 'px');
+    document.documentElement.style.setProperty('--cabH', cabH + 'px');
+    requestAnimationFrame(() => {
+      const sh = shelves[0];
+      const d = Math.max(6, Math.min(sh.clientHeight * 0.9, (sh.clientWidth - 8) / (PER_SHELF + 0.6)));
+      document.documentElement.style.setProperty('--d', d.toFixed(1) + 'px');
+    });
+  }
+  window.addEventListener('resize', layout);
+  layout();
+
+  // Sound
+  let ac = null;
+  function clink(white) {
+    if (!ac) return;
+    try {
+      const o = ac.createOscillator(), g = ac.createGain(), t = ac.currentTime;
+      o.type = 'sine'; o.frequency.value = (white ? 2100 : 1600) + Math.random() * 300;
+      g.gain.setValueAtTime(0.05, t); g.gain.exponentialRampToValueAtTime(0.0001, t + 0.09);
+      o.connect(g).connect(ac.destination); o.start(t); o.stop(t + 0.1);
+    } catch (e) {}
+  }
+
+  // Best time
+  const getBest = () => { try { const v = parseFloat(localStorage.getItem('vintecBest')); return isNaN(v) ? null : v; } catch (e) { return null; } };
+  const setBest = v => { try { localStorage.setItem('vintecBest', String(v)); } catch (e) {} };
+  const showBest = () => { const b = getBest(); $('bestStart').textContent = b ? `Best on this phone: ${b.toFixed(2)}s` : ''; };
+  showBest();
+
+  let state = 'idle', t0 = 0, raf = 0, red = 0, white = 0;
+  const fmt = ms => (ms / 1000).toFixed(2);
+
+  function tick() {
+    timeEl.innerHTML = fmt(performance.now() - t0) + '<small>s</small>';
+    raf = requestAnimationFrame(tick);
+  }
+
+  function reset() {
+    red = white = 0;
+    [...leftOrder, ...rightOrder].forEach(s => s.className = 'slot');
+    countEl.textContent = '0'; $('redN').textContent = '0/60'; $('whiteN').textContent = '0/60';
+    timeEl.innerHTML = '0.00<small>s</small>';
+    redBtn.classList.remove('ready', 'full'); whiteBtn.classList.remove('ready', 'full');
+    door.classList.remove('open', 'armed'); hint.textContent = '';
+  }
+
+  function start() {
+    try { ac = ac || new (window.AudioContext || window.webkitAudioContext)(); ac.resume && ac.resume(); } catch (e) {}
+    reset();
+    $('startScreen').classList.add('hide');
+    state = 'door';
+    door.classList.add('armed');
+    hint.textContent = 'Tap the door to open it';
+    t0 = performance.now();
+    cancelAnimationFrame(raf); tick();
+  }
+
+  function openDoor(e) {
+    if (e) e.preventDefault();
+    if (state !== 'door') return;
+    state = 'fill';
+    door.classList.remove('armed'); door.classList.add('open');
+    redBtn.classList.add('ready'); whiteBtn.classList.add('ready');
+    hint.textContent = 'Red on the left, white on the right';
+    if (navigator.vibrate) navigator.vibrate(15);
+  }
+
+  function add(isWhite, btn, e) {
+    if (e) e.preventDefault();
+    if (state !== 'fill') return;
+    const n = isWhite ? white : red;
+    if (n >= PER_SIDE) return;
+    const slot = (isWhite ? rightOrder : leftOrder)[n];
+    slot.className = 'slot pop ' + (isWhite ? 'w' : 'r');
+    if (isWhite) white++; else red++;
+    const total = red + white;
+    countEl.textContent = total;
+    $('redN').textContent = red + '/60'; $('whiteN').textContent = white + '/60';
+    if (red >= PER_SIDE) redBtn.classList.add('full');
+    if (white >= PER_SIDE) whiteBtn.classList.add('full');
+    btn.animate([{ transform: 'scale(.93)' }, { transform: 'scale(1)' }], { duration: 110 });
+    clink(isWhite);
+    if (navigator.vibrate) navigator.vibrate(6);
+    if (total >= PER_SIDE * 2) finish();
+  }
+
+  function tierFor(s) {
+    if (s < 25) return 'Sommelier speed';
+    if (s < 35) return 'Cellar master';
+    if (s < 50) return 'Serious collector';
+    return 'Still decanting';
+  }
+
+  function finish() {
+    const ms = performance.now() - t0;
+    state = 'done';
+    cancelAnimationFrame(raf);
+    timeEl.innerHTML = fmt(ms) + '<small>s</small>';
+    hint.textContent = 'Full';
+    const secs = ms / 1000, prev = getBest();
+    const isBest = prev === null || secs < prev;
+    if (isBest) setBest(secs);
+    setTimeout(() => {
+      $('final').innerHTML = fmt(ms) + '<small>s</small>';
+      $('tier').textContent = tierFor(secs);
+      $('bestEnd').textContent = isBest ? 'New best on this phone' : `Best on this phone: ${prev.toFixed(2)}s`;
+      $('endScreen').classList.remove('hide');
+      if (navigator.vibrate) navigator.vibrate([30, 40, 30]);
+    }, 550);
+  }
+
+  $('startBtn').addEventListener('click', start);
+  $('againBtn').addEventListener('click', () => {
+    $('endScreen').classList.add('hide'); state = 'idle'; reset(); showBest();
+    $('startScreen').classList.remove('hide');
+  });
+  door.addEventListener('pointerdown', openDoor);
+  redBtn.addEventListener('pointerdown', e => add(false, redBtn, e));
+  whiteBtn.addEventListener('pointerdown', e => add(true, whiteBtn, e));
+  // Keyboard fallback for desktop testing
+  window.addEventListener('keydown', e => {
+    if (state === 'door' && (e.key === ' ' || e.key === 'Enter')) openDoor();
+    else if (state === 'fill' && (e.key === 'ArrowLeft' || e.key === 'a')) add(false, redBtn);
+    else if (state === 'fill' && (e.key === 'ArrowRight' || e.key === 'd')) add(true, whiteBtn);
+  });
+  document.addEventListener('dblclick', e => e.preventDefault());
+  document.addEventListener('gesturestart', e => e.preventDefault());
+})();
+</script>
+</body>
+</html>
