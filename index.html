@@ -249,11 +249,11 @@ h1{font-family:var(--cond);font-weight:800;font-size:clamp(52px,17vw,96px);line-
   const CODES = { PRACTICE: 'CORK', FINAL: 'POUR' };
   // Slowest first. Each colour splits into A (slowest), B, C (fastest). max is exclusive.
   const BANDS = [
-    { name: 'Red',    bg: '#C8102E', fg: '#fff',    cuts: [40, 32, 27] },
-    { name: 'Yellow', bg: '#F2C230', fg: '#1d1c1b', cuts: [25, 23, 21] },
-    { name: 'Green',  bg: '#2E8B3E', fg: '#fff',    cuts: [20, 19, 18] },
-    { name: 'Blue',   bg: '#1F5FBF', fg: '#fff',    cuts: [17, 16, 15] },
-    { name: 'Purple', bg: '#6A2C91', fg: '#fff',    cuts: [14, 13, 0] },
+    { name: 'Red',    bg: '#C8102E', fg: '#fff',    cuts: [30, 25, 21] },
+    { name: 'Yellow', bg: '#F2C230', fg: '#1d1c1b', cuts: [19, 18, 17] },
+    { name: 'Green',  bg: '#2E8B3E', fg: '#fff',    cuts: [16, 15, 14] },
+    { name: 'Blue',   bg: '#1F5FBF', fg: '#fff',    cuts: [13, 12, 11] },
+    { name: 'Purple', bg: '#6A2C91', fg: '#fff',    cuts: [10, 9, 0] },
   ];
   // cuts = lower bounds for A, B, C within each colour
   const bandFor = s => {
